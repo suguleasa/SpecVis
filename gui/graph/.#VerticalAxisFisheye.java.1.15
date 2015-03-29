@@ -1,0 +1,1160 @@
+/*
+ * VerticalAxisFisheye.java
+ * Author: Sarah Poon
+ * Create Date: Jun 29, 2007
+ * Installation Location:
+ *
+ * $Header:
+/cvs/snovae/SNFactory/SpecVis/gui/graph/VerticalAxisFisheye.java,v 1.1
+2007/06/29 21:20:39 sspoon Exp $
+ *
+ */
+package gui.graph;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Image;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.awt.Component;
+
+import edu.umd.cs.piccolo.PNode;
+import edu.umd.cs.piccolo.event.PBasicInputEventHandler;
+import edu.umd.cs.piccolo.event.PInputEvent ;
+import edu.umd.cs.piccolo.nodes.PPath;
+import edu.umd.cs.piccolo.nodes.PText;
+import edu.umd.cs.piccolo.util.PBounds;
+import edu.umd.cs.piccolox.PFrame;
+import gui.graph.HorizontalAxisFisheye.LineNode;
+import gui.graph.HorizontalAxisFisheye.NumberNode;
+
+public class VerticalAxisFisheye extends PNode{
+
+  PNode layoutNode = new PNode();
+
+  private boolean focused = false;
+  private boolean rightOfFocus = false;
+  private boolean leftOfFocus = false;
+  private boolean isNeighbour = false;
+  private boolean specialCase = false;
+  private boolean neighbourFocused = false;
+  private boolean itIsANeighbour = false;
+  private boolean focusLock = false;
+  private boolean colorBlue = false;
+  private boolean colorRed = false;
+  private boolean over = false;
+  private boolean focusColorRed = false;
+  private boolean colorNeighbRed = false;
+  
+  public static final double INITIAL_SIZE = 0.495;//0.485;//3.5319434;//1.44967831;
+  public static final double FOCUS_SIZE = 1.2;//0.94;
+  public static final double OTHERS_SIZE = 0.46;//0.92253;
+  public static final double NEIGHBOUR_SIZE = 0.75;//3.953674;
+  public static final double SPECIAL_SIZE = 0.7;
+  
+  public static final double ROLLOVER_SIZE = 1;
+  
+  public static final double MIN_SIZE = 0.4584; // below this size, the target name is not visible anymore
+  public static final float BOX_HEIGHT = 20;
+  
+  public double length = 0;
+  
+  public ArrayList targetNames;
+
+  public int focusBoxOffset = -80;
+  public int nameOffset = -30;
+  public int neighbBoxOffset = -60;
+  public int boxOffset = -20;
+  
+  public int counter = 0;
+  public int index = 0;
+  String stringName;
+
+  private NameNode focusNode;
+  private LineNode lineNode;
+
+  final private SpecCanvas parent;
+
+  int namesExpanded;
+
+  public boolean flagLeft = false;
+
+  public boolean flagRight = false;
+	
+  public boolean firstPart = false;
+
+  public boolean secondPart = false;
+
+  public double initialHeight = 0;
+  public int numNodes =0 ;
+  public int numNodesLeft;
+
+
+  public double secondNeighbLength;
+
+  public double firstNeighbLength;
+
+  public int potentialMin = (int) Double.POSITIVE_INFINITY;
+  public int  minIndex = (int)Double.POSITIVE_INFINITY;
+  public int potentialMax = (int) Double.NEGATIVE_INFINITY;
+  public int maxIndex = (int) Double.NEGATIVE_INFINITY;
+
+  
+  public double partialLength;
+  public double partialLength2;
+  public double partialLength3;
+  public double partialLength4;
+  public double newSmallHeightRight;
+  public double newSmallHeightLeft;
+  public double newHeight;
+  
+
+  public void callUpdateAxis(int index) {
+      lineNode.callMouseClick(index);
+  }
+
+
+  public class LineNode extends PNode {
+
+        ArrayList lines;
+      
+        double difference=0;
+        NameNode clickedNode = null;
+
+		private double halfFocusLength;
+        private int lastNodeIndex = -1;
+         
+      public LineNode() {
+
+          Iterator i = targetNames.iterator();
+          while(i.hasNext()) {
+             String name = (String) i.next();
+             NameNode textNode = new NameNode(name);
+          
+              textNode.setScale(INITIAL_SIZE);
+
+              addChild(textNode);
+              counter ++;
+              length += textNode.getFullBoundsReference().getHeight();   
+              
+             //System.out.println("the height of each target name box is: " + textNode.getFullBoundsReference().getHeight());
+        }
+         
+          System.out.println("the number of nodes is: " + getChildrenCount() + " and the total length is "+length + " counter ="+ counter);
+          numNodes = counter;
+          
+          addInputEventListener(new PBasicInputEventHandler() {
+
+            public void mouseClicked(PInputEvent event) {//
+     		   
+     		   PNode node = event.getPickedNode();
+     		   mouseClickAction(node);
+     		   clickedNode = (NameNode)node;
+     		   NameNode tempNode;
+     		   
+     		   
+     		   for(int i =0; i< getChildrenCount()-1; i++){
+     		   		tempNode = (NameNode)getChild(i);
+     		   		tempNode.setNamePaint(Color.BLACK);
+     		   }
+
+     	   }// end of the mouseClicked
+     	   
+          	
+          	public void mouseMoved(PInputEvent event) {
+                 
+                   NameNode node = (NameNode) event.getPickedNode();
+                   difference = FOCUS_SIZE - INITIAL_SIZE;
+                   
+                   index = indexOfChild(node);
+                   
+                   if(index == lastNodeIndex){
+                       return;
+                   }
+                   lastNodeIndex = indexOfChild(node);
+                   
+                   parent.callGridColorUpdateY(indexOfChild(node));
+                   
+                   double increment = difference/3;;
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   double diff = ROLLOVER_SIZE - INITIAL_SIZE;
+                   
+                   double decrement = diff/3;
+                   
+                  
+                   if (specialCase == false){ 
+                	   
+                	   node.setScale(ROLLOVER_SIZE);
+                       node.setNamePaint(Color.RED);
+                       node.setX(focusBoxOffset);
+                       node.setNameX(nameOffset);
+                       
+                    /*   node.setPathToRectangle(focusBoxOffset,0,200,15);
+                       
+                       if(hasPrevious(node)){
+                    	   NameNode prevName = setPreviousName(index);
+                       	prevName.setPathToRectangle(nameOffset,0,200,15);
+                       }
+                       
+                       if(nextExists(node)) {
+                    	   NameNode nextName = setNextName(index);
+                    	   nextName.setPathToRectangle(nameOffset,0,200,15);
+                       }
+                       */
+                       
+                       colorNextNames(node, NEIGHBOUR_SIZE, Color.blue, ROLLOVER_SIZE - decrement, neighbBoxOffset,nameOffset, decrement);
+                       colorPreviousNames(node, NEIGHBOUR_SIZE, Color.blue, ROLLOVER_SIZE - decrement, neighbBoxOffset,nameOffset, decrement);
+                       
+                     /*  for(int i=0; i<getChildrenCount(); i++) {   
+                       	System.out.println("height =  "+ getChild(i).getFullBoundsReference().getHeight()+" at " + i);
+                       }*/
+                       
+                       specialLayoutPartOne(node, length, decrement,numNodes, 0, ROLLOVER_SIZE);
+                       
+                   }
+                   else {
+                                
+                   		//rolling over other numberss
+						colorOtherNames(node,increment);
+
+						//rolling over the focused number
+						colorFocusName(node);
+
+						//rolling over neighbour
+				      	colorNeighbourName(node);
+                       
+                   }
+              }
+             
+           /*   public void mouseEntered(PInputEvent event) {
+                  repaint();   
+                  over = true;
+              }*/
+             
+              public void mouseExited(PInputEvent event) {
+                   NameNode node = (NameNode) event.getPickedNode();
+                   repaintToInitial(node);           
+                 
+                   int index = indexOfChild(clickedNode);
+                   
+               /*    if((index < getChildrenCount()-1)){
+                    	if((float)getChild(index+1).getScale() == (float) NEIGHBOUR_SIZE) {
+                     		clickedNode.setScale(FOCUS_SIZE);
+                     		clickedNode.setNamePaint(Color.BLACK);
+                    		}
+                    	}
+                   
+                   if(index == getChildrenCount()-1 && (float) getChild(index-1).getScale() == (float)NEIGHBOUR_SIZE) {
+                   		clickedNode.setScale(FOCUS_SIZE);
+                   		clickedNode.setNamePaint(Color.BLACK);
+                   }*/
+                   
+                   uncolorAll(node);
+                   if(specialCase == false) {
+                       uncolorAll(node);
+                       
+                       repaintToInitial(node);
+                       
+                  //     newWidth = node.getWidth();
+                       
+                   }
+                  // setInitial();
+                  
+                   parent.callGridUncolorUpdateY(indexOfChild(node));
+              }
+             
+          });// end of the addInputEventListener
+
+      } // end of the LineNode constructor
+
+      public void decideWhichHalf(NameNode node, int totalIndex) {
+          flagLeft  = false;
+          flagRight = false;
+          
+          if(firstPart == true) {
+              if(indexOfChild(node)<(totalIndex/2)) {
+                  flagLeft = true;
+                  flagRight = false;
+              }
+              else {
+                  flagRight = true;
+                  flagLeft = false;
+              }
+          }
+          
+          if(secondPart  == true) {
+              if(indexOfChild(node)<(totalIndex)) {
+                  flagLeft = true;
+                  flagRight = false;
+              }
+              else {
+                  flagRight = true;
+                  flagLeft = false;
+              }
+          }
+          
+          System.out.println("flagLEFT = "+flagLeft+" FIRSTPart ="+firstPart+" flagRIGHT = "+flagRight+" SECONDPart = "+ secondPart+ " index: "+ indexOfChild(focusNode));
+      }
+      
+      public void specialLayoutPartOne(NameNode node, double localLength, double decrement, int NumNodes, int startingIndex, double specialSize) {
+          
+          
+          NameNode firstNeighb = null;
+          NameNode secondNeighb = null;
+          
+          int firstIndex=0;
+          int secondIndex=0;
+          int focusIndex=0;
+          
+          initialHeight = node.getHeight();
+          focusIndex = indexOfChild(node);
+                      
+          if(hasPrevious(node)) {
+              firstNeighb = setPreviousName(focusIndex);
+              firstIndex = indexOfChild(firstNeighb);
+              if(hasPrevious(firstNeighb)) {
+                  secondNeighb = setPreviousName(firstIndex);
+                  secondIndex = indexOfChild(secondNeighb);
+                  
+              }
+              else {
+                  secondIndex =0;
+                  secondNeighb= null;
+              }
+          }
+          
+          else{
+              firstIndex = 0;
+              secondIndex = 0;
+          }
+          secondNeighbLength = (specialSize- 2*decrement)*initialHeight;//secondNeighb.getFullBounds().getWidth();
+          firstNeighbLength = (specialSize-decrement)*initialHeight;//firstNeighb.getFullBounds().getWidth();
+          halfFocusLength = node.getFullBounds().getHeight()/2;
+  
+          System.out.println("halfFocusLength ="+halfFocusLength);
+          System.out.println("firstNeighbLength = "+firstNeighbLength);
+          System.out.println("secondNeighbLength = "+secondNeighbLength);
+          
+          potentialMin = Math.min(firstIndex, secondIndex);
+          minIndex = Math.min(potentialMin, focusIndex);
+          potentialMax = Math.max(firstIndex,secondIndex);
+          maxIndex = Math.max(potentialMax, focusIndex);
+          
+          System.out.println("minIndex =" + minIndex);
+          System.out.println("maxIndex =" + maxIndex);
+          
+              //taking care of the layout from the left
+              partialLength = (localLength/NumNodes)*(maxIndex+1);
+              
+              System.out.println("NUMNodes "+ NumNodes);
+              System.out.println("localLength = "+localLength + "      partialLength = "+partialLength);
+              
+              
+              if(partialLength!=0) {
+            	  partialLength2 = partialLength - secondNeighbLength - firstNeighbLength - halfFocusLength;
+            	  newSmallHeightLeft = partialLength2/minIndex;
+            	  
+            	  System.out.println("partialLength2 = "+partialLength2 +" newSmallHeightLeft =" + newSmallHeightLeft );
+              }
+              else {
+                  partialLength2=0;
+              }
+              
+              double incrementSize1 = newSmallHeightLeft/initialHeight;
+              
+              for(int i=startingIndex; i<minIndex; i++) {
+                  if(incrementSize1 < MIN_SIZE) {
+                      NameNode localNode = (NameNode) getChild(i);
+                      localNode.setScale(MIN_SIZE);
+                  }
+                  else {
+                      getChild(i).setScale(incrementSize1);
+                 }
+              }
+              
+              
+              
+              //taking care of the layout from the right
+              partialLength3 = localLength - partialLength - (halfFocusLength+firstNeighbLength+secondNeighbLength);
+              numNodesLeft = NumNodes - (maxIndex+2)-1;
+           
+             if(numNodesLeft >0){
+          	   newSmallHeightRight = partialLength3/numNodesLeft;
+              }
+             else {
+          	   newSmallHeightRight = 0;
+             }
+              
+              double incrementSize2 = newSmallHeightRight/initialHeight;
+              
+              for(int i=(maxIndex+3); i<NumNodes; i++) {
+                  if(incrementSize2 <= MIN_SIZE) {
+                      NameNode localNode = (NameNode) getChild(i);
+                      localNode.setScale(MIN_SIZE);
+                  }
+                  else {
+                      getChild(i).setScale(incrementSize2);
+                     }
+              }
+
+      }
+      
+		public void colorSpecialNames(NameNode node, Color color, double checkSize1, double checkSize2, double size1, double size2, int nameMargin) {
+			if (nextExists(node)) {
+				if ((float) getChild(indexOfChild(node) + 1).getScale() == (float) checkSize1) {
+					NameNode nextNeighbour = (NameNode) getChild(indexOfChild(node) + 1);
+					nextNeighbour.setNamePaint(color);
+					nextNeighbour.setScale(size1);
+					nextNeighbour.setNameX(nameMargin);
+					if (nextExists(nextNeighbour)) {
+						if ((float) getChild(indexOfChild(nextNeighbour) + 1).getScale() == (float) checkSize2) {
+							NameNode nextOther = (NameNode) getChild(indexOfChild(nextNeighbour) + 1);
+							nextOther.setNamePaint(color);
+							nextOther.setScale(size2);
+							nextOther.setNameX(nameMargin);
+						}
+					}
+				}
+			}
+			if (hasPrevious(node)) {
+				if ((float) getChild(indexOfChild(node) - 1).getScale() == (float) checkSize1) {
+					NameNode nextNeighbour = (NameNode) getChild(indexOfChild(node) - 1);
+					nextNeighbour.setNamePaint(color);
+					nextNeighbour.setScale(size1);
+					if (hasPrevious(nextNeighbour)) {
+						if ((float) getChild(indexOfChild(nextNeighbour) - 1).getScale() == (float) checkSize2) {
+							NameNode nextOther = (NameNode) getChild(indexOfChild(nextNeighbour) - 1);
+							nextOther.setNamePaint(color);
+							nextOther.setScale(size2);
+						}
+					}
+				}
+			}
+		}
+		
+		public void colorNextNames(NameNode node, double checkSize,
+				Color color, double specialSize, int xMargin, int nameMargin, double increment) {
+
+			if (nextExists(node)) {
+				if ((float) getChild(indexOfChild(node) + 1).getScale() != (float) checkSize) {
+					NameNode nextNeighbour = (NameNode) getChild(indexOfChild(node) + 1);
+					nextNeighbour.setNamePaint(color);
+					nextNeighbour.setScale(specialSize);
+					nextNeighbour.setX(xMargin);
+					nextNeighbour.setNameX(nameMargin);
+					if (nextExists(nextNeighbour)) {
+						if ((float) getChild(indexOfChild(nextNeighbour) + 1)
+								.getScale() != (float) checkSize) {
+							NameNode nextOther = (NameNode) getChild(indexOfChild(nextNeighbour) + 1);
+							nextOther.setNamePaint(color);
+							nextOther.setScale(specialSize - increment);
+							nextOther.setX(xMargin);
+							nextOther.setNameX(nameMargin);
+						}
+					}
+				}
+			}
+		}
+
+		public void colorPreviousNames(NameNode node, double checkSize,
+				Color color, double specialSize, int xMargin, int nameMargin, double increment) {
+			if (hasPrevious(node)) {
+				if ((float) getChild(indexOfChild(node) - 1).getScale() != (float) checkSize) {
+					NameNode previousNeighbour = (NameNode) getChild(indexOfChild(node) - 1);
+					previousNeighbour.setNamePaint(color);
+					previousNeighbour.setScale(specialSize);
+					previousNeighbour.setX(xMargin);
+					previousNeighbour.setNameX(nameMargin);
+					if (hasPrevious(previousNeighbour)) {
+						if ((float) getChild(
+								indexOfChild(previousNeighbour) - 1).getScale() != (float) checkSize) {
+							NameNode previousOther = (NameNode) getChild(indexOfChild(previousNeighbour) - 1);
+							previousOther.setNamePaint(color);
+							previousOther.setScale(specialSize - increment);
+							previousOther.setX(xMargin);
+							previousOther.setNameX(nameMargin);
+
+						}
+					}
+				}
+			}
+		}
+		
+	public void layoutChildren() {
+	
+	
+	      double xOffset = 30;
+	      double yOffset = 0;
+	
+	      NameNode each = null;
+	      
+	      for(int i=0; i<counter; i++){
+	          each = (NameNode) getChild(i);
+	          each.setOffset(xOffset,yOffset);
+	          
+	          yOffset += each.getFullBoundsReference().getHeight();
+	      }
+	      
+	         
+	  } // end layoutChildren;;
+
+	public void repaintToInitial(PNode node) {
+		
+		NameNode localNode = (NameNode) node;
+		
+	       if(specialCase == false) {
+			colorNextNames(localNode, INITIAL_SIZE, Color.black,
+					INITIAL_SIZE, 0,0, 0);
+			colorPreviousNames(localNode, INITIAL_SIZE, Color.black,
+					INITIAL_SIZE, 0,0, 0);
+
+			localNode.setScale(INITIAL_SIZE);
+			localNode.setNamePaint(Color.BLACK);
+			localNode.setX(0);
+			
+			localNode.setPathToRectangle((float) 0,(float) 0, (float) 200, BOX_HEIGHT);
+			
+			if(hasPrevious(localNode)){
+				NameNode prevName = setPreviousName(indexOfChild(node));
+				prevName.setPathToRectangle(0,0,200,BOX_HEIGHT);
+			}
+			
+			
+			if(nextExists(localNode)) {
+				NameNode nextName = setNextName(indexOfChild(node));
+             	nextName.setPathToRectangle(0,0,200,BOX_HEIGHT);
+			}
+			//localNode.setNameX(25);
+	       }
+	       else {
+	          
+	        //repaint the OTHERS and its neighbours
+	       	decolorOthers(localNode);
+		
+	       	//repaint the FOCUS and its neighbours
+	        decolorFocusName(localNode);
+	          
+	        // repaint the NEIGHBOURS
+            decolorNeighbourName(localNode);                
+	          
+	      }
+	  } 
+
+	public void colorOtherNames(NameNode node, double increment) {
+		if ((float) node.getScale() == (float) OTHERS_SIZE) {
+	
+			node.setNamePaint(Color.red);
+			//redNode = node;
+	
+			node.setScale(SPECIAL_SIZE + increment);
+			repaint();
+			colorRed = true;
+	
+			colorNextNames(node,NEIGHBOUR_SIZE,Color.blue,SPECIAL_SIZE,0,0,increment);
+			colorPreviousNames(node,NEIGHBOUR_SIZE,Color.blue,SPECIAL_SIZE,0,0,increment);
+			
+			//coloring the neighbour and the focus Name in blue if that's the case
+			if(hasPrevious(node)){
+				NameNode previous = (NameNode) getChild(indexOfChild(node)-1);
+				if((float)getChild(indexOfChild(node)-1).getScale() == (float)NEIGHBOUR_SIZE) {
+					previous.setNamePaint(Color.blue);
+					//color the focus
+					NameNode previousPrevious = (NameNode) getChild(indexOfChild(previous)-1);
+					previousPrevious.setNamePaint(Color.blue);
+				}
+				if(hasPrevious(previous)){
+					NameNode previousPrevious = (NameNode) getChild(indexOfChild(previous)-1);
+					if((float) previousPrevious.getScale() == (float) NEIGHBOUR_SIZE) {
+						previousPrevious.setNamePaint(Color.BLUE);
+					}
+				}
+			}
+			
+			if(nextExists(node)) {
+				NameNode next = (NameNode) getChild(indexOfChild(node)+1);
+				if((float)getChild(indexOfChild(node)+1).getScale() == (float)NEIGHBOUR_SIZE) {
+					next.setNamePaint(Color.blue);
+					//color the focus
+					NameNode nextNext = (NameNode) getChild(indexOfChild(next)+1);
+					nextNext.setNamePaint(Color.blue);
+				}
+				if(nextExists(next)){
+					NameNode nextNext = (NameNode) getChild(indexOfChild(next)+1);
+					if((float) nextNext.getScale() == (float) NEIGHBOUR_SIZE) {
+						nextNext.setNamePaint(Color.blue);
+					}
+				}
+			}	
+		}
+	}
+
+	
+	public void  decolorOthers(NameNode node) {
+		
+       	if (colorRed == true) {
+
+			node.setNamePaint(Color.black);
+			node.setScale(OTHERS_SIZE);
+
+			colorPreviousNames(node, NEIGHBOUR_SIZE,
+					Color.black, OTHERS_SIZE, -20,0, 0);
+
+			colorNextNames(node, NEIGHBOUR_SIZE, Color.black,
+					OTHERS_SIZE, -20, 0,0);
+
+			colorRed = false;
+
+		}
+		
+		//coloring the neighbour and the focus Name in blue if that's the case
+		if(hasPrevious(node)){
+			NameNode previous = (NameNode) getChild(indexOfChild(node)-1);
+			if((float)getChild(indexOfChild(node)-1).getScale() == (float)NEIGHBOUR_SIZE) {
+				previous.setNamePaint(Color.black);
+				//color the focus
+				NameNode previousPrevious = (NameNode) getChild(indexOfChild(previous)-1);
+				previousPrevious.setNamePaint(Color.black);
+			}
+			if(hasPrevious(previous)){
+				NameNode previousPrevious = (NameNode) getChild(indexOfChild(previous)-1);
+				if((float) previousPrevious.getScale() == (float) NEIGHBOUR_SIZE) {
+					previousPrevious.setNamePaint(Color.black);
+				}
+			}
+		}
+		
+		if(nextExists(node)) {
+			NameNode next = (NameNode) getChild(indexOfChild(node)+1);
+			if((float)getChild(indexOfChild(node)+1).getScale() == (float)NEIGHBOUR_SIZE) {
+				next.setNamePaint(Color.black);
+				//color the focus
+				NameNode nextNext = (NameNode) getChild(indexOfChild(next)+1);
+				nextNext.setNamePaint(Color.black);
+			}
+			if(nextExists(next)){
+				NameNode nextNext = (NameNode) getChild(indexOfChild(next)+1);
+				if((float) nextNext.getScale() == (float) NEIGHBOUR_SIZE) {
+					nextNext.setNamePaint(Color.black);
+				}
+			}
+		}
+	}
+	public void uncolorAll(NameNode localNode){
+		
+		if(specialCase == false) {
+			for(int i = 0; i<getChildrenCount(); i++) {
+				localNode = (NameNode) getChild(i);
+				localNode.setNamePaint(Color.BLACK);
+				localNode.setScale(INITIAL_SIZE);
+				localNode.setNameX(0);
+			}
+		}
+		else {
+			for(int i = 0; i<getChildrenCount(); i++) {
+				localNode = (NameNode) getChild(i);
+				if((float) localNode.getScale() == (float) FOCUS_SIZE) {
+					for(int j=0; j<i-1; j++) {
+						NameNode node = (NameNode)  getChild(j);
+						node.setNamePaint(Color.BLACK);
+						node.setScale(OTHERS_SIZE);
+					}
+					for(int j=i+2; j< getChildrenCount(); j++) {
+						NameNode node = (NameNode)  getChild(j);
+						node.setNamePaint(Color.BLACK);
+						node.setScale(OTHERS_SIZE);
+					}
+				}
+			}
+		}
+		
+		
+	}
+
+	public void colorNeighbourName(NameNode node) {
+		if((float) node.getScale() == (float) NEIGHBOUR_SIZE) {
+			
+			colorNeighbRed = true;
+			
+			node.setNamePaint(Color.RED);
+			
+			double difference = (NEIGHBOUR_SIZE - INITIAL_SIZE)/3;
+			
+			//if it's the left neighbour
+			if((float) getChild(indexOfChild(node)+1).getScale() == (float) FOCUS_SIZE) {
+				colorSpecialNames(node,Color.blue,OTHERS_SIZE,OTHERS_SIZE,NEIGHBOUR_SIZE-difference,NEIGHBOUR_SIZE-2*difference,nameOffset);
+				NameNode  focus = (NameNode) getChild(indexOfChild(node)+1);
+				focus.setNamePaint(Color.blue);
+				if(nextExists(focus)) {
+					NameNode  rightNeighb = (NameNode) getChild(indexOfChild(node)+2);
+					rightNeighb.setNamePaint(Color.blue);
+				}
+			}
+			
+			//if it's the right neighbour
+			if((float) getChild(indexOfChild(node)-1).getScale() == (float) FOCUS_SIZE) {
+				colorSpecialNames(node,Color.blue,OTHERS_SIZE,OTHERS_SIZE,NEIGHBOUR_SIZE-difference,NEIGHBOUR_SIZE-2*difference,nameOffset);
+				NameNode focus = (NameNode) getChild(indexOfChild(node)-1);
+				focus.setNamePaint(Color.blue);
+				if(hasPrevious(focus)){
+					NameNode leftNeighb = (NameNode) getChild(indexOfChild(node)-2);
+					leftNeighb.setNamePaint(Color.blue);
+				}
+			}	
+		}
+	}
+	
+	public void decolorNeighbourName(NameNode node) {
+		if (colorNeighbRed == true) {
+			node.setNamePaint(Color.black);
+			node.setScale(NEIGHBOUR_SIZE);
+			colorNeighbRed = false;
+			
+			double difference = (NEIGHBOUR_SIZE - INITIAL_SIZE)/3;
+			
+			//if it's the left neighbour
+			if((float) getChild(indexOfChild(node)+1).getScale() == (float) FOCUS_SIZE) {
+				colorSpecialNames(node,Color.black,NEIGHBOUR_SIZE-difference,NEIGHBOUR_SIZE-2*difference,OTHERS_SIZE,OTHERS_SIZE,nameOffset);
+				NameNode  focus = (NameNode) getChild(indexOfChild(node)+1);
+				focus.setNamePaint(Color.black);
+				if(nextExists(focus)) {
+					NameNode  rightNeighb = (NameNode) getChild(indexOfChild(node)+2);
+					rightNeighb.setNamePaint(Color.black);
+				}
+			}
+				
+			//if it's the right neighbour
+			if((float) getChild(indexOfChild(node)-1).getScale() == (float) FOCUS_SIZE) {
+				colorSpecialNames(node,Color.black,NEIGHBOUR_SIZE-difference,NEIGHBOUR_SIZE-2*difference,OTHERS_SIZE,OTHERS_SIZE,nameOffset);
+				NameNode focus = (NameNode) getChild(indexOfChild(node)-1);
+				focus.setNamePaint(Color.black);
+				if(hasPrevious(focus)){
+					NameNode leftNeighb = (NameNode) getChild(indexOfChild(node)-2);
+					leftNeighb.setNamePaint(Color.black);
+				}
+			}		
+		}
+	}
+
+	public void colorFocusName(NameNode node) {
+		if ((float) node.getScale() == (float) FOCUS_SIZE) {
+			node.setNamePaint(Color.RED);
+			//node.setX(-150);
+			focusColorRed = true;
+			colorSpecialNames(node,Color.blue,NEIGHBOUR_SIZE,OTHERS_SIZE,NEIGHBOUR_SIZE,SPECIAL_SIZE,nameOffset);
+			//node.setX(-40);
+		}
+	}
+	
+	
+	public void decolorFocusName(NameNode localNode) {
+		if (focusColorRed == true) {
+			localNode.setNamePaint(Color.BLACK);
+			localNode.setScale(FOCUS_SIZE);
+			focusColorRed = false;
+			colorSpecialNames(localNode,Color.black,NEIGHBOUR_SIZE,SPECIAL_SIZE,NEIGHBOUR_SIZE,OTHERS_SIZE,nameOffset);
+			} 
+	}
+	
+     public void decolorUnfocusedCase(PNode node) {
+     	NameNode newNode = (NameNode) node;
+        
+         if(nextExists(newNode)) {
+                NameNode  nextNeighb = (NameNode)  getChild(indexOfChild(node)+1);
+                nextNeighb.setNamePaint(Color.black);
+                nextNeighb.setScale(INITIAL_SIZE);
+                if(nextExists(nextNeighb)) {
+                	NameNode nextOther = (NameNode) getChild(indexOfChild(nextNeighb)+1);
+                	nextOther.setNamePaint (Color.black);
+                	nextOther.setScale(INITIAL_SIZE);
+               }
+         }
+         else {
+         		if(hasPrevious(newNode)) {
+         			NameNode  previousNeighb = (NameNode)  getChild(indexOfChild(node)-1);
+         			previousNeighb.setNamePaint(Color.black);
+         			previousNeighb.setScale(INITIAL_SIZE);
+         			if(hasPrevious(previousNeighb)) {
+         				NameNode previousOther = (NameNode) getChild(indexOfChild(previousNeighb)-1);
+         				previousOther.setNamePaint(Color.black);
+         				previousOther.setScale(INITIAL_SIZE);
+                }
+         		}
+      }
+       
+       
+      if(hasPrevious(newNode)) {
+          	NameNode  previousNeighb = (NameNode)  getChild(indexOfChild(node)-1);
+              previousNeighb.setNamePaint(Color.black);
+              previousNeighb.setScale(INITIAL_SIZE);
+              if(hasPrevious(previousNeighb)) {
+                   NameNode previousOther = (NameNode) getChild(indexOfChild(previousNeighb)-1);
+                   previousOther.setNamePaint(Color.black);
+                   previousOther.setScale(INITIAL_SIZE);
+               }
+      }
+      else {
+           	if(nextExists(newNode)) {
+           		NameNode  nextNeighb = (NameNode)  getChild(indexOfChild(node)+1);
+           		nextNeighb.setNamePaint(Color.black);
+           		nextNeighb.setScale(INITIAL_SIZE);
+           		if(nextExists(nextNeighb)) {
+           			NameNode nextOther = (NameNode) getChild(indexOfChild(nextNeighb)+1);
+           			nextOther.setNamePaint(Color.black);
+           			nextOther.setScale(INITIAL_SIZE);
+           		}
+           	}
+      }
+     
+      	newNode.setScale(INITIAL_SIZE);
+      	newNode.setNamePaint(Color.BLACK );
+        
+      repaint();
+     }
+      public void focusTheNeighbours(NameNode focusNode) {
+
+                      NameNode previousName = null;
+                      NameNode nextName = null;
+
+                      int pickedIndex = indexOfChild(focusNode);
+
+                      previousName = setPreviousName(pickedIndex);
+                      nextName = setNextName(pickedIndex);
+
+                      if (hasPrevious(focusNode) == true) {
+                          focusNeighbour(previousName);
+                          leftOfFocus = true;
+                       }
+                      else {
+                          leftOfFocus = false;
+                      }
+
+                      if (hasNext(focusNode) == true) {
+                          focusNeighbour(nextName);
+                          rightOfFocus = true;
+                      }
+                      else {
+                          rightOfFocus = false;
+                      }
+
+      }
+
+	public boolean nextExists(NameNode node) {
+	      PNode newNode = (PNode) node;
+	      if((indexOfChild(newNode)+1)  < getChildrenCount()) {
+	          return true;
+	      }
+	      else {
+	          return false;
+	      }
+	     
+	  }
+	
+	public void changeOthersSize(double size) {
+	          for(int i=0; i<=getChildrenCount()-1; i++) {
+	                   getChild(i).setScale(size);
+	                  /* NameNode localNode= (NameNode) getChild(i);
+	                   localNode.setNameX(-20);
+	                   localNode.setX(0);*/
+	               }
+	          specialCase = true;
+	
+	      }
+
+	public void callMouseClick(int index) {
+	
+	      PNode node = this.getChild(index);
+	      mouseClickAction(node);
+	  }
+
+	public void mouseClickAction(PNode node) {
+	      NameNode newNode = null;
+	
+	       changeOthersSize(INITIAL_SIZE);
+	
+	       defocusingNames(focusNode);
+	       //specialCase = false;
+	       
+	       if(node.getClass().equals(NameNode.class)) {
+	
+	           NameNode  Name = (NameNode) node;
+	           newNode = Name;
+	
+	           if(newNode != null) {
+	
+	               if(newNode == focusNode) {
+	                   focusNode = null;
+	                 
+	               }
+	               else {
+	
+	                   changeOthersSize(OTHERS_SIZE);
+	                  
+	
+	                   focusNode = newNode;
+	
+	                   focusTheNeighbours(focusNode);
+	
+	                   focusName(Name);
+	
+	               }
+	           }
+	       }
+	
+	  }
+	 public void unfocusAll() {
+	    
+	       if (focusNode != null) {
+	       
+	          defocusingNames(focusNode);
+	          changeOthersSize(INITIAL_SIZE);
+	          //focusNode.setNameX(-20);
+	          specialCase = false;
+	       }
+	    }
+
+       public void defocusingNames(NameNode focusNode) {
+           if(focusNode != null) {
+
+               focused = true;
+               deFocusName(focusNode);
+
+               NameNode previousName = null;
+               NameNode nextName = null;
+
+               int pickedIndex = indexOfChild(focusNode);
+
+               previousName = setPreviousName(pickedIndex);
+               nextName = setNextName(pickedIndex);
+
+               neighbourFocused = true;
+               if (hasPrevious(focusNode) == true) {
+                   deFocusNeighbour(previousName);
+               }
+               neighbourFocused = true;
+               if (hasNext(focusNode) == true) {
+                   deFocusNeighbour(nextName);
+               }
+
+           }
+           
+       }
+
+	public NameNode theNext(NameNode focusNode) {
+
+              int pickedIndex = indexOfChild(focusNode);
+
+              if( getChildrenCount()> pickedIndex + 1) {
+                  focusNode = (NameNode) getChild(pickedIndex +1);
+              }
+              return focusNode;
+          }
+
+
+      public NameNode thePrevious(NameNode focusNode) {
+      	
+      		int pickedIndex = indexOfChild(focusNode);
+      		
+      		if(0 <= pickedIndex-1 ) {
+      			focusNode = (NameNode) getChild(pickedIndex -1);
+      		}
+      		
+      		return focusNode;
+      }
+
+      public NameNode setNextName(int index) {
+           NameNode nextName;
+
+           if(getChildrenCount()> index + 1) {
+           		nextName = (NameNode) getChild(index + 1);
+           }
+           else {
+                nextName =null;
+           }
+           
+           return nextName;
+      }
+
+      public NameNode setPreviousName(int index) {
+          NameNode previousName;
+
+          if (0 <= index -1 ) {
+               previousName = (NameNode) getChild(index -1);
+                   itIsANeighbour = true;
+           }
+           else {
+               previousName = null;
+               itIsANeighbour = false;
+           }
+          return previousName;
+      }
+
+      public void focusName(NameNode focusName) {
+
+              focused = true;
+                  if(focusName != null) {
+                      focusName.setScale(FOCUS_SIZE);
+                      namesExpanded = 3;
+                  }
+                  
+                  focusName.setX(-80);
+                  focusName.setNameX(-20);
+                 // focusName.setBoxHeight(740);
+      }
+
+      public void deFocusName(NameNode focusName) {
+
+              focused = false;
+              if (focusName != null) {
+
+               focusName.setScale(INITIAL_SIZE);
+                namesExpanded =0;
+           }
+              
+              focusName.setX(-20);
+              focusName.setNameX(0);
+      }
+
+
+      public void focusNeighbour(NameNode focusName) {
+
+              neighbourFocused = true;
+              if (focusName != null) {
+                  focusName.setScale(NEIGHBOUR_SIZE);
+              }
+           //   focusName.setNameX(-20);
+      }
+
+
+      public void deFocusNeighbour (NameNode focusName) {
+              neighbourFocused = false;
+              if(focusName != null) {
+                  focusName.setScale(INITIAL_SIZE);
+              }
+           //   focusName.setNameX(0);
+       }
+
+      public boolean hasNext(NameNode focusName) {
+
+          int pickedIndex = indexOfChild(focusName);
+
+          if(pickedIndex <= getChildrenCount()-1) {
+              return true;
+          }
+          else {
+              return false;
+          }
+      }
+
+      public boolean hasPrevious(NameNode focusName) {
+
+          int pickedIndex = indexOfChild(focusName);
+
+          if (pickedIndex != 0) {
+              return true;
+          }
+
+          else {
+              return false;
+          }
+      }
+
+  } // end of the LineNode class
+
+
+
+  public class NameNode extends PPath {
+
+  		PText name;
+  		
+      public NameNode(String i) {
+        
+ 	   super();
+ 	   
+ 	   //setStrokePaint(Color.white);
+ 	  
+ 	   setPathToRectangle(0,0,200,20);
+ 	   
+ 	   name = new PText();
+ 	  
+ 	
+ 	   stringName = String.valueOf(i);
+       name.setText(stringName);
+  
+       //set the name inside the box
+       name.translate(20,0);
+       
+       PBounds b = getFullBounds();
+       b.inset(0,0);//0.3);
+       
+       //set the x coordinate for the box
+       setX(-20);
+       
+       setBounds(b);
+     	 
+       addChild(name);
+       
+       setPaint(Color.white);
+    		
+       setChildrenPickable(false);
+   
+      }//end of the NameNode constructor
+
+      
+      public String getNameText() {
+      	return name.getText();
+      }
+       
+      public void setBoxHeight(double size) {
+      	
+      }
+       
+      public void setNamePaint(Color c) {
+       	name.setTextPaint(c);
+      }
+     
+      public void setNameX(int size) {
+      	name.setX(size);
+      }
+      
+      public void setRectHeight(float height) {
+          setPathToRectangle(0,0,200,height);
+      }
+      
+      
+      
+  } // end of the NameNode class
+  
+  public VerticalAxisFisheye(SpecCanvas parent, ArrayList targetNames) {
+      this.parent = parent;
+      layoutNode = new PNode();
+      this.targetNames = targetNames;
+      lineNode = new LineNode();
+      addChild(lineNode);
+
+  }
+
+  /*final private SpecCanvas parent;
+
+  public VerticalAxisFisheye(final SpecCanvas parent) {
+
+      this.parent = parent;
+
+      //layoutNode = new PNode();
+      lineNode = new LineNode();
+      addChild(lineNode);
+
+  }*/
+
+
+  public void callUnFocus() {
+    lineNode.unfocusAll();
+}
+
+}
